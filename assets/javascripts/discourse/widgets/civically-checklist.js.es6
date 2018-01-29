@@ -1,5 +1,6 @@
 import { createWidget } from 'discourse/widgets/widget';
 import RawHtml from 'discourse/widgets/raw-html';
+import DiscourseURL from 'discourse/lib/url';
 import { iconNode } from 'discourse-common/lib/icon-library';
 import { emojiUnescape } from 'discourse/lib/text';
 import { ajax } from 'discourse/lib/ajax';
@@ -74,46 +75,137 @@ createWidget('checklist-item', {
   }
 });
 
+createWidget('bookmark-item', {
+  tagName: 'li',
+
+  html(attrs) {
+    const title = attrs.topic.get('fancyTitle');
+    return h('span', title);
+  },
+
+  click() {
+    const url = this.attrs.topic.get('url');
+    DiscourseURL.routeTo(url);
+  }
+});
+
 export default createWidget('civically-checklist', {
   tagName: 'div.civically-checklist.widget-container',
   buildKey: () => 'civically-checklist',
 
   defaultState() {
     return {
-      items: [],
+      currentType: 'checklist',
+      checklist: [],
+      bookmarks: [],
       loading: true
     };
   },
 
-  getItems() {
+  getChecklist() {
     const username = this.currentUser.username;
     ajax(`/checklist/${username}`).then((items) => {
-      this.state.items = items;
+      this.state.checklist = items || [];
       this.state.loading = false;
       this.scheduleRerender();
     });
   },
 
-  html(attrs, state) {
-    let contents = [
-      h('div.widget-title', I18n.t('civically_checklist.title'))
-    ];
+  getBookmarks() {
+    this.store.findFiltered('topicList', {
+      filter: 'bookmarks'
+    }).then((result) => {
+      this.state.bookmarks = result.topics || [];
+      this.state.loading = false;
+      this.scheduleRerender();
+    });
+  },
 
-    if (state.loading) {
-      this.getItems();
-      contents.push(h('div.spinner.small'));
-    } else {
-      let next = false;
-      contents.push(h('ul', state.items.map((item) => {
-        let itemAttrs = { item };
-        if (!item.checked && next === false) {
-          next = true;
-          itemAttrs['next'] = next;
-        }
-        return this.attach('checklist-item', itemAttrs);
-      })));
+  buildChecklist() {
+    let next = false;
+    return this.state.checklist.map((item) => {
+      let itemAttrs = { item };
+      if (!item.checked && next === false) {
+        next = true;
+        itemAttrs['next'] = next;
+      }
+      return this.attach('checklist-item', itemAttrs);
+    });
+  },
+
+  buildBookmarks() {
+    const bookmarks = this.state.bookmarks;
+    let list = [ h('div.no-items', I18n.t('civically.list.none')) ];
+
+    if (bookmarks.length > 0) {
+      list = bookmarks.map((topic) => {
+        return this.attach('bookmark-item', { topic });
+      });
     }
 
+    return list;
+  },
+
+  buildTitle(type) {
+    const currentType = this.state.currentType;
+    const active = currentType === type;
+
+    let classes = 'list-title';
+    if (active) classes += ' active';
+
+    let attrs = {
+      action: 'showList',
+      actionParam: type,
+      title: `user.${type}.help`,
+      label: `user.${type}.title`,
+      className: classes
+    };
+
+    return this.attach('link', attrs);
+  },
+
+  html(attrs, state) {
+    const user = this.currentUser;
+
+    let contents = [
+      h('div.widget-label', user.username),
+      h('div.widget-multi-title', [
+        this.buildTitle('checklist'),
+        this.buildTitle('bookmarks')
+      ])
+    ];
+
+    let listContents = [];
+
+    if (state.loading) {
+      if (state.currentType === 'checklist') {
+        this.getChecklist();
+      } else {
+        this.getBookmarks();
+      }
+      listContents.push(h('div.spinner.small'));
+    } else {
+      if (state.currentType === 'checklist') {
+        listContents.push(this.buildChecklist());
+      } else {
+        listContents.push(this.buildBookmarks());
+      }
+    }
+
+    let classes = 'widget-list';
+
+    if (state.currentType === 'checklist') {
+      classes += '.no-borders';
+    }
+
+    contents.push(h(`div.${classes}`, h('ul', listContents)));
+
     return contents;
+  },
+
+  showList(currentType) {
+    this.state.loading = true;
+    this.state.currentType = currentType;
+    this.scheduleRerender();
   }
 });

@@ -1,4 +1,9 @@
 en:
   js:
-    civically_checklist:
-      title: "Your Checklist"
+    user:
+      checklist:
+        title: "Checklist"
+        help: "Your Checklist"
+      bookmarks:
+        title: "Bookmarks"
+        help: "Your Bookmarks"
