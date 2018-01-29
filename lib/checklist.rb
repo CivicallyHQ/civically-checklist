@@ -1,5 +1,5 @@
 class CivicallyChecklist::Checklist
-  def self.user_list(user)
+  def self.get_list(user)
     ::JSON.parse(PluginStore.get('action_checklist', user.id))
   end
 
@@ -8,7 +8,7 @@ class CivicallyChecklist::Checklist
   end
 
   def self.add_item(user, item, index = nil)
-    list = user_list(user)
+    list = get_list(user)
 
     unless list.include?(item)
       if index
@@ -21,24 +21,16 @@ class CivicallyChecklist::Checklist
     end
   end
 
-  def self.toggle_checked(user, item_id, checked)
-    list = user_list(user)
+  def self.update_item(user, item_id, updates)
+    list = get_list(user)
+
+    puts "UPDATING ITEM: #{item_id}; #{updates}"
 
     list.each do |item|
       if item['id'] === item_id
-        item['checked'] = checked
-      end
-    end
-
-    set_list(user, list)
-  end
-
-  def self.toggle_active(user, item_id, active)
-    list = user_list(user)
-
-    list.each do |item|
-      if item['id'] === item_id
-        item['active'] = active
+        updates.each do |k, v|
+          item[k.to_s] = v
+        end
       end
     end
 

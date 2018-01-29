@@ -3,7 +3,7 @@ class CivicallyChecklist::ChecklistController < ::ApplicationController
 
   def list
     user = User.find_by(username: params[:username])
-    list = CivicallyChecklist::Checklist.user_list(user)
+    list = CivicallyChecklist::Checklist.get_list(user)
     render_json_dump(list.take(5))
   end
 
@@ -13,7 +13,7 @@ class CivicallyChecklist::ChecklistController < ::ApplicationController
 
     user = User.find_by(username: params[:username])
 
-    result = CivicallyChecklist::Checklist.toggle_checked(user, params[:item_id], params[:checked])
+    result = CivicallyChecklist::Checklist.update_item(user, params[:item_id], checked: params[:checked])
 
     if result
       render json: success_json
