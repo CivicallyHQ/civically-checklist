@@ -24,8 +24,6 @@ class CivicallyChecklist::Checklist
   def self.update_item(user, item_id, updates)
     list = get_list(user)
 
-    puts "UPDATING ITEM: #{item_id}; #{updates}"
-
     list.each do |item|
       if item['id'] === item_id
         updates.each do |k, v|

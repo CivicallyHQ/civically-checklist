@@ -4,6 +4,7 @@ import DiscourseURL from 'discourse/lib/url';
 import { iconNode } from 'discourse-common/lib/icon-library';
 import { emojiUnescape } from 'discourse/lib/text';
 import { ajax } from 'discourse/lib/ajax';
+import { buildTitle, clearUnreadList } from 'discourse/plugins/civically-layout/discourse/lib/utilities';
 import { h } from 'virtual-dom';
 
 createWidget('checklist-item', {
@@ -79,8 +80,16 @@ createWidget('bookmark-item', {
   tagName: 'li',
 
   html(attrs) {
-    const title = attrs.topic.get('fancyTitle');
-    return h('span', title);
+    const topic = attrs.topic;
+    const title = topic.get('fancyTitle');
+    let contents = [ h('span', title) ];
+
+    const unseen = topic.get('unseen');
+    if (unseen) {
+      contents.push(h('a.badge.badge-notification.new-topic'));
+    }
+
+    return contents;
   },
 
   click() {
@@ -146,32 +155,14 @@ export default createWidget('civically-checklist', {
     return list;
   },
 
-  buildTitle(type) {
-    const currentType = this.state.currentType;
-    const active = currentType === type;
-
-    let classes = 'list-title';
-    if (active) classes += ' active';
-
-    let attrs = {
-      action: 'showList',
-      actionParam: type,
-      title: `user.${type}.help`,
-      label: `user.${type}.title`,
-      className: classes
-    };
-
-    return this.attach('link', attrs);
-  },
-
   html(attrs, state) {
     const user = this.currentUser;
 
     let contents = [
       h('div.widget-label', user.username),
       h('div.widget-multi-title', [
-        this.buildTitle('checklist'),
-        this.buildTitle('bookmarks')
+        buildTitle(this, 'user', 'checklist'),
+        buildTitle(this, 'user', 'bookmarks')
       ])
     ];
 
@@ -185,6 +176,8 @@ export default createWidget('civically-checklist', {
       }
       listContents.push(h('div.spinner.small'));
     } else {
+      clearUnreadList(this, state.currentType);
+
       if (state.currentType === 'checklist') {
         listContents.push(this.buildChecklist());
       } else {
@@ -203,9 +196,9 @@ export default createWidget('civically-checklist', {
     return contents;
   },
 
-  showList(currentType) {
+  showList(type) {
     this.state.loading = true;
-    this.state.currentType = currentType;
+    this.state.currentType = type;
     this.scheduleRerender();
   }
 });
