@@ -35,11 +35,11 @@ createWidget('checklist-item', {
   },
 
   html(attrs, state) {
-    const icon = state.checked ? 'check-circle' : 'circle-o';
+    const icon = state && state.checked ? 'check-circle' : 'circle-o';
     let className = 'check-toggle';
     let contents = [];
 
-    if (state.checkable) {
+    if (state && state.checkable) {
       className += ' checkable';
       contents.push(this.attach('button', {
         icon,
@@ -58,7 +58,7 @@ createWidget('checklist-item', {
       })
     ];
 
-    if (state.showDetail) {
+    if (state && state.showDetail) {
       rightContents.push(h('div.check-detail',
         new RawHtml({ html: `<span>${emojiUnescape(attrs.item.detail)}</span>` })
       ));
@@ -124,7 +124,7 @@ export default createWidget('civically-checklist', {
     this.store.findFiltered('topicList', {
       filter: 'bookmarks'
     }).then((result) => {
-      this.state.bookmarks = result.topics || [];
+      this.state.bookmarks = result.topics.slice(0,5) || [];
       this.state.loading = false;
       this.scheduleRerender();
     });
@@ -132,14 +132,14 @@ export default createWidget('civically-checklist', {
 
   buildChecklist() {
     let next = false;
-    return this.state.checklist.map((item) => {
+    return h('ul', this.state.checklist.map((item) => {
       let itemAttrs = { item };
       if (!item.checked && next === false) {
         next = true;
         itemAttrs['next'] = next;
       }
       return this.attach('checklist-item', itemAttrs);
-    });
+    }));
   },
 
   buildBookmarks() {
@@ -152,7 +152,7 @@ export default createWidget('civically-checklist', {
       });
     }
 
-    return list;
+    return h('ul', list);
   },
 
   html(attrs, state) {
@@ -191,7 +191,17 @@ export default createWidget('civically-checklist', {
       classes += '.no-borders';
     }
 
-    contents.push(h(`div.${classes}`, h('ul', listContents)));
+    let widgetListContents = [listContents];
+
+    if (state.currentType === 'bookmarks') {
+      widgetListContents.push(h('div.widget-list-controls', this.attach('link', {
+        className: 'p-link no-underline',
+        href: `/bookmarks`,
+        label: 'civically.list.more'
+      })));
+    }
+
+    contents.push(h(`div.${classes}`, widgetListContents));
 
     return contents;
   },
